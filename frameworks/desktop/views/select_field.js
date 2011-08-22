@@ -184,7 +184,6 @@ SC.SelectFieldView = SC.FieldView.extend(
       var shouldLocalize = this.get('localize'); 
    
       // convert fieldValue to guid, if it is an object.
-      if (!valueKey && fieldValue) fieldValue = SC.guidFor(fieldValue) ;
       if ((fieldValue === null) || (fieldValue === '')) fieldValue = '***' ;
     
       if (objects) {
