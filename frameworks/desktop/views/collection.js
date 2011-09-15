@@ -2152,7 +2152,7 @@ SC.CollectionView = SC.View.extend(SC.CollectionViewDelegate, SC.CollectionConte
         content       = this.get('content'),
         contentIndex  = itemView ? itemView.get('contentIndex') : -1,
         info, anchor, sel, isSelected, modifierKeyPressed, didSelect = NO,
-        allowsMultipleSel = content.get('allowsMultipleSelection');
+        allowsMultipleSel = this.getPath('content.allowsMultipleSelection');
 
     if (!this.get('isEnabled')) return contentIndex > -1;
 
