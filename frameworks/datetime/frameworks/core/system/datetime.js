@@ -1054,6 +1054,7 @@ SC.DateTime.mixin(SC.Comparable,
       case 'y': return this._pad(this._get('year') % 100);
       case 'Y': return this._get('year');
       case 'Z':
+      SC.Logger.info('tz: ' + timezone);
         offset = -1 * timezone;
         return (offset >= 0 ? '+' : '-')
                + this._pad(parseInt(Math.abs(offset)/60, 10))
@@ -1072,7 +1073,7 @@ SC.DateTime.mixin(SC.Comparable,
     var tz = (timezone !== undefined) ? timezone : (this.timezone !== undefined) ? this.timezone : 0;
 
     // need to move into local time zone for these calculations
-    this._setCalcState(start - (timezone * 60000), 0); // so simulate a shifted 'UTC' time
+    this._setCalcState(start - (tz * 60000), 0); // so simulate a shifted 'UTC' time
 
     return format.replace(/\%([aAbBcdDhHiIjmMpsSUWwxXyYZ\%])/g, function() {
       var v = that.__toFormattedString.call(that, arguments, start, timezone);
