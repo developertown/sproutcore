@@ -587,7 +587,6 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
                       '" placeholder="',hint,'"', spellCheckString, 
                       ' maxlength="', maxLength, '" /></span>') ;
       }
-
     }
     else {
       var input= this.$input(),
@@ -602,6 +601,7 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
 
           if (!SC.platform.input.placeholder) {
             context.setClass('sc-hint', YES);
+            input.val(hint);
           }
         } else {
           // Internet Explorer doesn't allow you to modify the type afterwards
@@ -696,20 +696,39 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
 
   didCreateLayer: function() {
     sc_super(); 
-    // For some strange reason if we add focus/blur events to textarea
-    // inmediately they won't work. However if I add them at the end of the
-    // runLoop it works fine.
+    this._applyHint();
+    this._addEvents();
+  },
+  
+  /** @private
+    after the layer is append to the doc, set the field value and observe events
+    only for textarea.
+  */
+  didAppendToDocument: function() {
+    if (this.get('isTextArea')) {
+      this.setFieldValue(this.get('fieldValue'));
+      this._performAddEvents();
+    }
+  },
+  
+  _applyHint: function() {
     if(!SC.platform.input.placeholder && this._hintON){
       var currentValue = this.$input().val();
       if(!currentValue || (currentValue && currentValue.length===0)){
         this.$input().val(this.get('formattedHint'));
       }
     }
+  },
+  
+  _addEvents: function() {
+    // For some strange reason if we add focus/blur events to textarea
+    // inmediately they won't work. However if I add them at the end of the
+    // runLoop it works fine.
     if(this.get('isTextArea')) {
-      this.invokeLast(this._addTextAreaEvents);
+      this.invokeLast(this._performAddEvents);
     }
     else {
-      this._addTextAreaEvents();
+      this._performAddEvents();
       
       // In Firefox, for input fields only (that is, not textarea elements),
       // if the cursor is at the end of the field, the "down" key will not
@@ -724,16 +743,17 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
     }
   },
   
-  
   /** 
-    Adds all the textarea events. This functions is called by didCreateLayer
-    at different moments depending if it is a textarea or not. Appending 
-    events to text areas is not reliable unless the element is already added 
-    to the DOM.
+    Adds appropriate events to the input or textarea element. This functions is
+    called by didCreateLayer at different moments depending if it is a textarea
+    or not.
     
+    Note that appending events to textarea elements is not reliable unless the
+    element is already added to the DOM. (TODO: link source of this info?)
   */
-  _addTextAreaEvents: function() {
+  _performAddEvents: function() {
     var input = this.$input();
+    this._addChangeEvent();
     SC.Event.add(input, 'focus', this, this._textField_fieldDidFocus);
     SC.Event.add(input, 'blur',  this, this._textField_fieldDidBlur);
     
@@ -771,7 +791,7 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
       this.set('focused',YES);
       this.fieldDidFocus(evt);
       var val = this.get('value');
-      if(!SC.platform.input.placeholder && ((!val) || (val && val.length===0))) {
+      if(!SC.platform.input.placeholder && ((!val) || (val && val.length===0) || (val && val == this.hint))) {
         this._hintON = NO;
       }
     }, this);
@@ -786,10 +806,13 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
       // passing the original event here instead that was potentially set from
       // loosing the responder on the inline text editor so that we can
       // use it for the delegate to end editing
+      this.resignFirstResponder();
       this.fieldDidBlur(this._origEvent || evt);
+
       var val = this.get('value');
-      if(!SC.platform.input.placeholder && ((!val) || (val && val.length===0))) {
+      if(!SC.platform.input.placeholder && !this._hintON && ((!val) || (val && val.length===0))) {
         this._hintON = YES;
+        this.updateLayer();
       }
     }, this);
   },
@@ -818,8 +841,6 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
   },
   
   fieldDidBlur: function(evt) {
-    this.resignFirstResponder() ;
-
     if(this.get('commitOnBlur')) this.commitEditing(evt);
     
     // get the pane we hid intercept pane for (if any)
@@ -961,9 +982,9 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
     the hint text if needed.
   */
   didLoseKeyResponderTo: function(keyView) {
-    SC.RunLoop.begin();
-    this.fieldDidBlur();
-    SC.RunLoop.end();
+    SC.run(function() {
+      this.fieldDidBlur();
+    }, this);
     this.invokeLater("scrollToOriginIfNeeded", 100);
   },
   
@@ -1105,6 +1126,14 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
   */
   selectStart: function(evt) {
     return YES;
+  },
+  
+  _inputElementTagName: function() {
+    if (this.get('isTextArea')) {
+      return 'textarea';
+    } else {
+      return 'input';
+    }
   },
   
   /** @private
