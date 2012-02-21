@@ -504,10 +504,13 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
     for(idx=0;idx<len;idx++) {
       if (isArray) storeKey = storeKeys[idx];
       this.revisions[storeKey] = rev;
-      this._notifyRecordPropertyChange(storeKey, statusOnly, key);
-
-      this._propagateToChildren(storeKey, function(storeKey){
-        that.dataHashDidChange(storeKey, null, statusOnly, key);
+      this.invokeOnce(function() { 
+        this._notifyRecordPropertyChange(storeKey, statusOnly, key);
+      });
+      this.invokeLater(function() {
+        this._propagateToChildren(storeKey, function(storeKey){
+          that.dataHashDidChange(storeKey, null, statusOnly, key);
+        });
       });
     }
 
